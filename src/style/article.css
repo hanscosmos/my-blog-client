@@ -1,0 +1,221 @@
+/* 文章正文排版 */
+.article-content {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--color-text);
+}
+
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+.article-content h1 { font-size: 2em; }
+.article-content h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid var(--color-border); }
+.article-content h3 { font-size: 1.25em; }
+.article-content h4 { font-size: 1.1em; }
+
+.article-content p {
+  margin-top: 0;
+  margin-bottom: 1.2em;
+  line-height: 1.8;
+}
+
+.article-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.article-content a:hover {
+  border-bottom-color: var(--color-primary);
+}
+
+.article-content strong {
+  font-weight: 600;
+}
+
+.article-content em {
+  font-style: italic;
+}
+
+.article-content hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+/* 行内代码（默认所有 code 都是行内样式） */
+.article-content code {
+  display: inline;
+  white-space: nowrap;
+  background: var(--color-container);
+  color: #e83e8c;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+  line-height: normal;
+}
+
+/* 代码块内的 code 覆盖为块级 */
+.article-content pre > code {
+  display: block;
+  white-space: pre;
+  background: transparent !important;
+  color: var(--color-text);
+  padding: 16px;
+  font-size: 14px;
+  border-radius: 0;
+  line-height: 1.6;
+}
+
+/* 引用块 */
+.article-content blockquote {
+  margin: 1.2em 0;
+  padding: 0.6em 1em;
+  border-left: 4px solid var(--color-primary);
+  background: var(--color-container);
+  border-radius: 0 4px 4px 0;
+  color: var(--color-muted);
+}
+
+.article-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* 列表 */
+.article-content ul,
+.article-content ol {
+  margin: 0.8em 0 1.2em;
+  padding-left: 1.5em;
+}
+
+.article-content ul {
+  list-style: disc;
+}
+
+.article-content ol {
+  list-style: decimal;
+}
+
+.article-content li {
+  margin-bottom: 0.4em;
+  line-height: 1.8;
+}
+
+.article-content li > ul,
+.article-content li > ol {
+  margin-top: 0.4em;
+  margin-bottom: 0;
+}
+
+/* 表格 */
+.article-content table {
+  margin: 1.2em 0;
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border);
+  font-size: 0.95em;
+}
+
+.article-content table th,
+.article-content table td {
+  padding: 0.6em 1em;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.article-content table th {
+  background: var(--color-container);
+  font-weight: 600;
+}
+
+.article-content table tr:nth-child(even) {
+  background: var(--color-container);
+}
+
+/* 图片 */
+.article-content img {
+  max-width: 100%;
+  margin: 1em 0;
+  border-radius: 6px;
+}
+
+/* 代码块容器 */
+.article-content pre {
+  margin: 1.2em 0;
+  padding: 0;
+  border-radius: 8px;
+  overflow: auto;
+  background: var(--color-container);
+  border: 1px solid var(--color-border);
+}
+
+/* ReactMarkdown 原生 pre 包裹 code 组件输出，当包裹自定义代码块时去掉外层边框 */
+.article-content pre:has(> .code-block) {
+  margin: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.article-content pre code {
+  display: block;
+  padding: 16px;
+  background: transparent !important;
+  line-height: 1.6;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+/* 自定义代码块容器（code 组件生成，无 pre 标签） */
+.article-content .code-block {
+  margin: 1.2em 0;
+  border-radius: 8px;
+  overflow: auto;
+  background: var(--color-container);
+  border: 1px solid var(--color-border);
+}
+
+.article-content .code-block-code {
+  display: block;
+  padding: 16px;
+  background: transparent !important;
+  line-height: 1.6;
+  font-size: 14px;
+  color: var(--color-text);
+  white-space: pre;
+  font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+}
+
+/* 语法高亮覆盖 */
+.article-content pre code.hljs {
+  color: var(--color-text);
+  background: transparent !important;
+}
+
+/* 任务列表 */
+.article-content input[type="checkbox"] {
+  margin-right: 0.4em;
+}
+
+/* 代码块滚动条优化 */
+.article-content pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.article-content pre::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 3px;
+}

@@ -1,0 +1,43 @@
+@import url("./reset.css");
+@import url("./theme.css");
+@import url("./article.css");
+
+@font-face {
+  font-family: "roboto";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(../assets/font/roboto/Roboto-Medium.ttf);
+}
+
+@font-face {
+  font-family: "NotoSansSC";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(../assets/font/notoSansSC/NotoSansSC-Regular.ttf);
+}
+
+@font-face {
+  font-family: "ZCOOLKuaiLe";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(../assets/font/zcool/ZCOOLKuaiLe-Regular.ttf);
+}
+
+@font-face {
+  font-family: "Ali FangYuan";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(../assets/font/ali/ailifangyuan.ttf);
+}
+
+@font-face {
+  font-family: "YouSheBiaoTiHei";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(../assets/font/YouSheBiaoTiHei/YouSheBiaoTiHei.ttf);
+}
