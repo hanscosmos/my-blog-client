@@ -13,10 +13,11 @@ export interface UserInfo {
 
 interface AuthState {
   token: string | null;
+  refreshToken: string | null;
   csrfToken: string | null;
   userInfo: UserInfo;
   isLogin: boolean;
-  login: (data: { token: string; csrfToken: string; userInfo: UserInfo }) => void;
+  login: (data: { token: string; refreshToken: string; csrfToken: string; userInfo: UserInfo }) => void;
   logout: () => void;
 }
 
@@ -34,14 +35,16 @@ export const useAuth = create<AuthState>()(
   persist(
     (set) => ({
       token: null,
+      refreshToken: null,
       csrfToken: null,
       userInfo: defaultUserInfo,
       isLogin: false,
-      login: ({ token, csrfToken, userInfo }) =>
-        set({ token, csrfToken, userInfo, isLogin: true }),
+      login: ({ token, refreshToken, csrfToken, userInfo }) =>
+        set({ token, refreshToken, csrfToken, userInfo, isLogin: true }),
       logout: () =>
         set({
           token: null,
+          refreshToken: null,
           csrfToken: null,
           userInfo: defaultUserInfo,
           isLogin: false,

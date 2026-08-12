@@ -48,6 +48,7 @@ export default function Login() {
       });
       login({
         token: res.token,
+        refreshToken: res.refreshToken,
         csrfToken: res.csrfToken,
         userInfo: res.userInfo,
       });

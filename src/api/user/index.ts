@@ -4,11 +4,19 @@ import type { UserInfo } from "@/store/useAuth";
 export interface LoginRes {
   userInfo: UserInfo;
   token: string;
+  refreshToken: string;
   csrfToken: string;
+}
+
+export interface RefreshTokenRes {
+  token: string;
 }
 
 export const loginApi = (data: { username: string; password: string; key: string; code: string }) =>
   adminRequest.post<LoginRes>("/user/login", data);
+
+export const refreshTokenApi = (data: { refreshToken: string }) =>
+  adminRequest.post<RefreshTokenRes>("/user/refresh", data);
 
 export const getValidCodeApi = (data: { key: string }) =>
   adminRequest.post<string>("/user/valid/code", data);
