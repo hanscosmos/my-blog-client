@@ -43,8 +43,24 @@ export default defineConfig({
       "app-wrapper",
       {
         "background-color": "var(--color-bg)",
+        // 由主色与页面底色混合出的柔和对角渐变，自动跟随主题色与明暗模式。
+        // background-attachment: fixed 把绘制区域锚定到视口，页面滚动时背景不会跟着滚走。
+        "background-image":
+          "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 26%, var(--color-bg)) 0%, color-mix(in srgb, var(--color-primary) 12%, var(--color-bg)) 45%, color-mix(in srgb, var(--color-primary) 4%, var(--color-bg)) 100%)",
+        "background-repeat": "no-repeat",
+        "background-attachment": "fixed",
+        "background-size": "100% 100%",
         color: "var(--color-text)",
         "padding-top": "60px",
+      },
+    ],
+    // 浮在渐变背景之上的半透明面板（首页卡片、筛选栏、分页条）
+    [
+      "card-glass",
+      {
+        "background-color":
+          "color-mix(in srgb, var(--color-container-bg) 92%, transparent)",
+        "backdrop-filter": "blur(8px)",
       },
     ],
     ["transition-linear", { transition: "all 0.5s linear" }],

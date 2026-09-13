@@ -6,6 +6,7 @@ import { PublicRoute } from "./ProtextedRoute";
 // 使用懒加载
 const Home = React.lazy(() => import("@/pages/Home"));
 const About = React.lazy(() => import("@/pages/About"));
+const Archive = React.lazy(() => import("@/pages/Archive"));
 const Article = React.lazy(() => import("@/pages/Article"));
 const CategoryPage = React.lazy(() => import("@/pages/Category"));
 const TagPage = React.lazy(() => import("@/pages/Tag"));
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
       {
         path: "about",
         element: <About />,
+      },
+      {
+        path: "archive",
+        element: <Archive />,
       },
       {
         path: "category/:alias",

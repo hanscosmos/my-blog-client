@@ -40,6 +40,20 @@ interface ArticleItemType {
   tags: ArticleTagItem[];
 }
 
+interface ArticleArchiveItemType {
+  id: string;
+  title: string;
+  createTime: string;
+}
+
+interface ArticleTagStatType {
+  id: string;
+  name: string;
+  alias: string;
+  color: string;
+  count: number;
+}
+
 interface ArticleDetailBaseInfo {
   id: string;
   title: string;

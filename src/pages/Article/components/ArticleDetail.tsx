@@ -38,6 +38,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ content }) => {
   const [activeId, setActiveId] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<string>("");
   const articleRef = useRef<HTMLDivElement>(null);
+  const tocRef = useRef<HTMLDivElement>(null);
 
   // 从渲染后的 DOM 中提取目录
   useEffect(() => {
@@ -78,6 +79,33 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ content }) => {
     headings.forEach((h) => observer.observe(h));
     return () => observer.disconnect();
   }, [toc, content]);
+
+  // 目录高亮项跟随滚动：当高亮项超出目录容器可视区域时，把容器滚到能看见它的位置
+  useEffect(() => {
+    const container = tocRef.current;
+    if (!container || !activeId) return;
+    const el = container.querySelector<HTMLElement>(
+      `[data-toc-id="${CSS.escape(activeId)}"]`,
+    );
+    if (!el) return;
+    // 用 rect 差值换算成容器内的滚动坐标（ul 有 relative，offsetTop 不可靠）
+    const elTop =
+      el.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop;
+    const elBottom = elTop + el.offsetHeight;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+    const padding = 8;
+    if (elTop - padding < viewTop) {
+      container.scrollTo({ top: elTop - padding, behavior: "smooth" });
+    } else if (elBottom + padding > viewBottom) {
+      container.scrollTo({
+        top: elBottom + padding - container.clientHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [activeId]);
 
   // 点击跳转
   const handleClick = (id: string) => {
@@ -154,7 +182,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ content }) => {
 
       {/* 右侧目录 */}
       <aside className="hidden lg:block w-60 shrink-0">
-        <div className="sticky top-20 p-0 max-h-[calc(100vh-6rem)] overflow-y-auto">
+        <div
+          ref={tocRef}
+          className="sticky top-20 p-0 max-h-[calc(100vh-6rem)] overflow-y-auto"
+        >
           <div className="text-sm font-semibold mb-3 text-text">目录</div>
           {toc.length === 0 ? (
             <p className="text-xs text-muted">暂无目录</p>
@@ -165,6 +196,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ content }) => {
                 return (
                   <li key={item.id}>
                     <div
+                      data-toc-id={item.id}
                       onClick={() => handleClick(item.id)}
                       className={`cursor-pointer w-full text-left py-1 rounded-r transition-colors truncate relative ${
                         item.level === 1

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find e:/myself/project/my-blog/my-blog-service -type d -name node_modules -prune -o -type f -name \"*.ts\" -print | grep -i article | head -50)",
+      "Read(//e/myself/project/my-blog/my-blog-service/**)",
+      "Bash(cd e:/myself/project/my-blog && grep -rn \"stat/tag\\\\|count_by_tag\\\\|stat/category\" --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.py\" my-blog-admin/src my-blog-client/src my-blog-service/modules 2>/dev/null)",
+      "Read(//e/myself/project/my-blog/**)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"=== TSC EXIT: $? ===\")"
+    ],
+    "additionalDirectories": [
+      "e:\\myself\\project\\my-blog\\my-blog-service\\modules\\client"
+    ]
+  }
+}

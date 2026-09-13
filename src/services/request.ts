@@ -22,7 +22,7 @@ export interface ApiResponse<T = any> {
 const getCookie = (name: string): string | undefined => {
   const matches = document.cookie.match(
     new RegExp(
-      "(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$&") + "=([^;]*)"
+      "(?:^|; )" + name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$&") + "=([^;]*)"
     )
   );
   return matches ? decodeURIComponent(matches[1]) : undefined;
@@ -237,32 +237,41 @@ const setCsrfCookie = (token: string) => {
   document.cookie = `csrftoken=${token};path=/`;
 };
 
+/**
+ * 响应拦截器已把 AxiosResponse 解包成业务 payload（返回 `res.data`），
+ * 但 axios 的类型系统无法表达「拦截器改变了返回值形状」这件事。
+ * axios 1.20 起第二个泛型参数 R 是条件类型分支，传裸类型参数 T 时无法被解析，
+ * 因此在这里统一做一次断言，调用方仍然拿到准确的业务类型 T。
+ */
+const unwrapResponse = <T>(promise: Promise<unknown>): Promise<T> =>
+  promise as Promise<T>;
+
 const createRequest = (inst: AxiosInstance) => ({
   get: async <T = any>(
     url: string,
     config?: AxiosRequestConfig
   ): Promise<T> => {
-    return inst.get<any, T>(url, config);
+    return unwrapResponse<T>(inst.get<ApiResponse<T>>(url, config));
   },
   post: async <T = any>(
     url: string,
     data?: any,
     config?: AxiosRequestConfig
   ): Promise<T> => {
-    return inst.post<any, T>(url, data, config);
+    return unwrapResponse<T>(inst.post<ApiResponse<T>>(url, data, config));
   },
   put: async <T = any>(
     url: string,
     data?: any,
     config?: AxiosRequestConfig
   ): Promise<T> => {
-    return inst.put<any, T>(url, data, config);
+    return unwrapResponse<T>(inst.put<ApiResponse<T>>(url, data, config));
   },
   delete: async <T = any>(
     url: string,
     config?: AxiosRequestConfig
   ): Promise<T> => {
-    return inst.delete<any, T>(url, config);
+    return unwrapResponse<T>(inst.delete<ApiResponse<T>>(url, config));
   },
 });
 

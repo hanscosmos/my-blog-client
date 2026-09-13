@@ -38,7 +38,7 @@
 | 路由      | react-router-dom | 7.8  | 路由（`createBrowserRouter` + 懒加载） |
 | UI 组件库 | antd             | 5.27 | 表单、分页、消息提示、骨架屏等         |
 | 状态管理  | zustand          | 5.0  | 全局状态（`persist` 中间件做持久化）   |
-| HTTP      | axios            | 1.11 | 请求封装与拦截器                       |
+| HTTP      | axios            | 1.20 | 请求封装与拦截器                       |
 | 样式      | UnoCSS           | 66.5 | 原子化 CSS                             |
 
 ### 其他依赖
@@ -106,9 +106,10 @@ my-blog-client/
 │   ├── api/                    # 接口层：按业务模块拆分，一函数一接口
 │   │   ├── article/
 │   │   │   ├── index.ts        # 文章列表 / 详情 / 热门 / 阅读统计
+│   │   │   ├── archive/        # 归档列表（支持按标签筛选）
 │   │   │   ├── category/       # 分类树
 │   │   │   ├── column/         # 专栏列表（已定义，暂未使用）
-│   │   │   └── tag/            # 标签列表（已定义，暂未使用）
+│   │   │   └── tag/            # 标签列表（暂未使用） / 标签统计
 │   │   ├── blogger/            # 博主公开资料（关于页）
 │   │   └── user/               # 登录 / 刷新 token / 验证码 / 用户信息
 │   ├── assets/                 # 静态资源（webpack/vite 处理，走 import）
@@ -117,20 +118,23 @@ my-blog-client/
 │   ├── layout/
 │   │   ├── MainLayout.tsx      # 主布局：顶部导航 + 1080px 居中内容区（<Outlet/>）
 │   │   └── TopBar/
-│   │       ├── index.tsx       # 顶栏：站名、导航（首页/关于）、搜索、主题、登录态/头像下拉
+│   │       ├── index.tsx       # 顶栏：站名、导航（首页/归档/关于）、搜索、主题、登录态/头像下拉
 │   │       └── components/
 │   │           ├── SearchBtn.tsx      # 搜索入口（占位，无逻辑）
 │   │           └── ThemeSwitcher.tsx  # 明暗切换 + 中控台入口（后者占位）
 │   ├── pages/                  # 页面（每个目录一个页面，index.tsx 为入口）
 │   │   ├── Home/
-│   │   │   ├── index.tsx       # 首页：文章分页列表 + 右侧边栏
-│   │   │   └── components/Sidebar.tsx  # 侧边栏：分类树 / 热门文章 / 标签云
+│   │   │   ├── index.tsx       # 首页：顶部分类筛选 + 两列卡片分页列表 + 右侧边栏
+│   │   │   └── components/
+│   │   │       ├── CategoryFilter.tsx  # 顶部分类筛选（一级 pill + 二级行，就地过滤不跳转）
+│   │   │       └── Sidebar.tsx         # 侧边栏：热门文章 / 标签统计
 │   │   ├── Article/
 │   │   │   ├── index.tsx       # 文章详情页：头部元信息 + 正文 + 目录
 │   │   │   └── components/
-│   │   │       ├── ArticleCard.tsx    # 文章卡片（列表复用组件）
+│   │   │       ├── ArticleCard.tsx    # 文章卡片（list 横向 / grid 竖向两种变体）
 │   │   │       └── ArticleDetail.tsx  # Markdown 渲染 + TOC + 代码高亮/复制 + 回到顶部
 │   │   ├── About/index.tsx     # 关于博主：拉取博主简介
+│   │   ├── Archive/index.tsx   # 归档：按年分组的时间线 + 标签统计筛选
 │   │   ├── Category/index.tsx  # 分类文章列表（alias → 分类 id → 文章列表）
 │   │   ├── Tag/index.tsx       # 标签文章列表
 │   │   ├── Login/index.tsx     # 登录页：用户名/密码/图形验证码，MD5 加密提交
@@ -180,6 +184,7 @@ my-blog-client/
 | `/`                | `pages/Home`     | MainLayout | 无            | 首页，文章分页列表                |
 | `/article/:id`     | `pages/Article`  | MainLayout | 无            | 文章详情                          |
 | `/about`           | `pages/About`    | MainLayout | 无            | 关于博主                          |
+| `/archive`         | `pages/Archive`  | MainLayout | 无            | 归档：按年分组的时间线 + 标签筛选 |
 | `/category/:alias` | `pages/Category` | MainLayout | 无            | 分类文章列表（按 alias 定位分类） |
 | `/tag/:alias`      | `pages/Tag`      | MainLayout | 无            | 标签文章列表                      |
 | `/login`           | `pages/Login`    | 无         | `PublicRoute` | 已登录访问会重定向到 `/`          |
@@ -194,7 +199,7 @@ my-blog-client/
 ### 1. 顶部导航栏（`layout/TopBar`）
 
 - 站点名称「与君同的博客」
-- 导航项：首页 `/`、关于 `/about`；当前路径匹配时高亮（`text-primary`）
+- 导航项：首页 `/`、归档 `/archive`、关于 `/about`；当前路径匹配时高亮（`text-primary`）
 - 搜索图标：**占位，暂无交互**
 - 主题切换：明/暗模式一键切换（`ThemeSwitcher`）
 - 中控台图标：**占位，暂无交互**
@@ -207,24 +212,30 @@ my-blog-client/
 - 顶部固定 60px 导航栏
 - 内容区最大宽度 1080px 居中，`app-wrapper` shortcut 预留 `padding-top: 60px`
 - 底色/文字色跟随主题变量
+- `app-wrapper` 叠了一层柔和对角渐变背景：由 `--color-primary` 与 `--color-bg` 用 `color-mix()` 按 26% → 12% → 4% 混出，因此**自动跟随主题色与明暗模式，无需新增 CSS 变量**。用 `background-attachment: fixed` + `background-size: 100% 100%` 把绘制区域锚定到视口，**页面滚动时背景不会跟着滚走**（注意：iOS Safari 对 `background-attachment: fixed` 支持不佳，如需移动端也固定，得改用 `position: fixed` 的伪元素承载背景）
 
 ### 3. 首页（`pages/Home`）
 
-- 左侧文章列表：调 `POST /article/list`，每页 10 条，`Pagination` 分页
+- 顶部**分类筛选** `CategoryFilter`：调 `POST /article/category/tree` 取树，一级分类一行 pill，选中后在其下方展开该分类的二级 pill（无子级则不占高度）
+  - **就地过滤，不跳转**：点击「全部」传 `category=''`，点父分类传父分类 id（后端自动包含其子分类文章），点子分类传子分类 id
+  - 切换分类时重置到第 1 页；两级高亮联动（选中子分类时其父分类也高亮）
+  - 用 `requestIdRef` 丢弃过期响应，避免快速连点分类时旧结果覆盖新数据
+- 文章列表：调 `POST /article/list`，每页 10 条，**两列网格**（`grid-cols-2`），卡片用 `variant="grid"`
 - 翻页时平滑滚动回顶部
-- 底部悬浮分页条（`sticky bottom-0`）
+- 底部悬浮分页条（`sticky bottom-0`，半透明 `card-glass`）
 - 加载中 / 空列表 有对应提示文案
 - 右侧边栏 `Sidebar`（`w-72`，`sticky top-24`）：
-  - **分类**：调 `POST /article/category/tree` 获取分类树，支持两级展示（父分类 + 子分类数量）；点击跳 `/category/:alias`
   - **热门文章**：调 `POST /article/hot`，取前 5 条；前 3 名序号高亮为主色；点击跳 `/article/:id`
-  - **标签云**：**占位**，`tags` 硬编码为空数组，未接接口（组件内部已预留 `getTagListApi` 的使用位置）
+  - **标签统计** `TagStat`：调 `POST /article/stat/tag` 拿「有可见文章」的标签及数量，chip 显示 `#名称 数量`；点击跳 `/archive?tag=<id>`（归档页会按该标签直接筛上）；标签较多时该区块限高 `max-h-72` 内滚，避免侧边栏太长后 `sticky` 内容触不到
 
 ### 4. 文章列表卡片（`pages/Article/components/ArticleCard`）
 
-首页 / 分类页 / 标签页共用的展示组件：
+首页 / 分类页 / 标签页共用的展示组件，通过 `variant` 切换两种布局（默认 `list`）：
 
-- 左侧：分类标签（两级时显示「父 / 子」）、发布日期、阅读数、标题（单行截断）、摘要（3 行截断）、标签列表
-- 右侧：封面图，无封面时回退到默认图 `assets/images/common-article-cover.png`
+- **`list`（横向，分类页 / 标签页使用）**：左侧分类标签（两级时显示「父 / 子」）、发布日期、阅读数、标题（单行截断）、摘要（3 行截断）、标签列表；右侧封面图
+- **`grid`（竖向，首页使用）**：封面在上（`aspect-[16/9]`，悬浮时缓慢放大 `scale-105`），下方依次是元信息、标题（2 行截断）、摘要（2 行截断）、标签列表；卡片自身用 `h-full flex flex-col` + 摘要 `flex-1` 保证同行等高，悬浮时上浮 + 阴影 + 标题转主色
+- 两种变体的元信息行与标签列表抽成文件内的 `ArticleMeta` / `TagList` 复用
+- 无封面时回退到默认图 `assets/images/common-article-cover.png`
 - 点击整卡触发 `onClick(id)` 跳转详情
 
 ### 5. 文章详情页（`pages/Article`）
@@ -264,7 +275,20 @@ my-blog-client/
 - antd `Card` 包裹，加载中显示 `Skeleton`，无内容时显示「博主还没有填写简介～」
 - 简介按原文换行展示（`whitespace-pre-wrap`）
 
-### 9. 登录页（`pages/Login`）
+### 9. 归档页（`pages/Archive`）
+
+- 只展示 `status='publish'` 且 `visible='public'` 的文章——**草稿与「仅自己可见」都不出现**，登录状态下也一样（与首页 `/article/list` 的行为不同，后者允许作者看到自己的私有文章）
+- 顶部「标签统计」卡片：调 `POST /article/stat/tag` 拿到「有可见文章」的标签及其数量，chip 显示 `#名称 数量`
+  - 点击 chip → 按该标签筛选列表并高亮；再点同一个 chip，或点右上角「取消筛选」→ 恢复全量
+  - 没有任何可见标签时，整张卡不渲染
+  - 标签统计只在挂载时请求一次，切换标签只重新请求归档列表
+  - **当前选中标签由 URL 承载**（`useSearchParams` 读 `?tag=<id>`，写入用 `replace: true`）：首页侧边栏「标签统计」可直接带 `?tag=` 跳进来并自动筛上，筛选结果也可分享/刷新保持
+- 下方时间线：调 `POST /article/archive`（入参 `{ tag }`，不分页，后端已按 `createTime` 倒序）
+  - 前端用 `Map` 按 `createTime` 的年份分组，因数据已倒序，年份天然倒序
+  - 每年一行标题（年份 + 分隔线 + 该年篇数），条目为 `MM-DD` + 标题（单行截断），点击跳 `/article/:id`
+  - 加载中显示 `Skeleton`，无数据显示「暂无文章」
+
+### 10. 登录页（`pages/Login`）
 
 - 表单字段：用户名、密码、图形验证码
 - 验证码：进入页面时用 `crypto.randomUUID()` 生成 `key`，调 `POST /user/valid/code` 拿到验证码文本直接渲染（点击可刷新）
@@ -273,11 +297,11 @@ my-blog-client/
 - 已登录用户访问会被 `PublicRoute` 重定向到 `/`
 - 视觉：渐变背景 + 6 个浮动圆形装饰动画（`float` keyframes）
 
-### 10. 404 页（`pages/NotFound`）
+### 11. 404 页（`pages/NotFound`）
 
 - 极简实现，仅输出 `❌ 404 Not Found` 文本，暂无样式与返回首页入口
 
-### 11. 需求沟通页（`src/ai`）
+### 12. 需求沟通页（`src/ai`）
 
 - 不参与构建，用于沉淀 AI 协作产物：`plan/` 存方案，`memory/` 存对话纪要（`/log` skill 生成）
 
@@ -295,6 +319,10 @@ my-blog-client/
 | `adminRequest`         | `/api`        | 管理端接口（当前仅登录/刷新/验证码用） |
 
 `request` 额外挂载 `setCsrfCookie(token)`。
+
+**返回类型（`unwrapResponse`）**：响应拦截器成功回调返回的是 `res.data`（业务 payload），但 axios 的类型系统无法表达「拦截器改变了返回值形状」这件事。`createRequest` 里的 4 个方法通过 `unwrapResponse<T>(promise)` 做一次断言，因此调用方写 `request.post<ArticleItemType>(...)` 拿到的就是 `Promise<ArticleItemType>`，不需要 `.data.data`。
+
+> ⚠️ 不要改回 `inst.post<any, T>(url, ...)` 的写法。axios 1.20 起第二个泛型参数 `R` 是条件类型分支（`AxiosResponseResult`），传入裸类型参数 `T` 时 TS 无法解析该条件，会报 `TS2322: 'AxiosResponseResult<any, T, any, any>' is not assignable to type 'T'`。
 
 - **超时**：10s；默认 `Content-Type: application/json`
 - **请求拦截器**：从 `useAuth` 取 token，写入 `Authorization` 头；同时从 cookie 读 `csrftoken` 写入 `X-CSRFToken` 头
@@ -357,7 +385,7 @@ my-blog-client/
 | `title-lg` / `title-md`                          | `text-3xl font-bold` / `text-2xl font-semibold`        |
 | `text-muted` / `text-primary` / `text-secondary` | 文字色                                                 |
 
-**自定义 rules**：`app-wrapper`（页面底色 + 文字色 + `padding-top: 60px`）、`transition-linear`（`transition: all 0.5s linear`）。
+**自定义 rules**：`app-wrapper`（页面底色 + 柔和对角渐变背景 + 文字色 + `padding-top: 60px`）、`card-glass`（`--color-container-bg` 80% 透明度 + `backdrop-filter: blur(8px)`，用于浮在渐变上的卡片/筛选栏/分页条）、`transition-linear`（`transition: all 0.5s linear`）。
 
 **字体**（`style/index.css` 中 `@font-face`）：`roboto`、`NotoSansSC`、`ZCOOLKuaiLe`、`Ali FangYuan`、`YouSheBiaoTiHei`。目前仅在 CSS 中声明，尚未在任何页面的 `font-family` 中强制使用。
 
@@ -368,7 +396,7 @@ my-blog-client/
 全局 `.d.ts`（免 import 直接使用）：
 
 - `src/types/index.d.ts` — `PageType`（`pageNumber`/`pageSize`）、`ResultPageType<T>`（`total`/`result`）、`IdType`
-- `src/types/api/article.d.ts` — `QueryType`、`ArticleTagItem`、`ArticleItemType`（列表项）、`ArticleDetailType`（含 `baseInfo`/`authorInfo`/`categoryInfo`/`tagList`/`detailInfo`）、`ArticleCategoryItemType`、`ArticleColumnItemType`
+- `src/types/api/article.d.ts` — `QueryType`、`ArticleTagItem`、`ArticleItemType`（列表项）、`ArticleDetailType`（含 `baseInfo`/`authorInfo`/`categoryInfo`/`tagList`/`detailInfo`）、`ArticleCategoryItemType`、`ArticleColumnItemType`、`ArticleArchiveItemType`（归档项）、`ArticleTagStatType`（标签统计项）
 - `src/types/api/blogger.d.ts` — `BloggerProfileType`
 
 ### 工具函数
@@ -386,12 +414,16 @@ my-blog-client/
 | 方法 | 路径                     | 函数                    | 入参                                                                     | 返回                                                    |
 | ---- | ------------------------ | ----------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
 | POST | `/article/list`          | `getArticleListApi`     | `PageType & QueryType`（`pageNumber`、`pageSize`、`title`、`category?`） | `ResultPageType<ArticleItemType>`                       |
+| POST | `/article/archive`       | `getArticleArchiveApi`  | `{ tag?: string }`（标签 id，空 = 全部）                                 | `ArticleArchiveItemType[]`（**不分页**，按 `createTime` 倒序） |
+| POST | `/article/stat/tag`      | `getTagStatApi`         | —                                                                        | `ArticleTagStatType[]`（`{ id, name, alias, color, count }`） |
 | POST | `/article/detail`        | `getArticleDetailApi`   | `{ id }`                                                                 | `ArticleDetailType`                                     |
 | POST | `/article/hot`           | `getArticleHotListApi`  | —                                                                        | `ArticleItemType[]`                                     |
 | POST | `/article/read/stat`     | `getArticleReadStatApi` | `{ id }`                                                                 | `{ todayRead, totalRead }`                              |
 | POST | `/article/category/tree` | `getAllCategoryTreeApi` | —                                                                        | `ArticleCategoryItemType[]`                             |
 | POST | `/article/column/list`   | `getColumnListApi`      | `PageType`                                                               | `ResultPageType<ArticleColumnItemType>`（**暂未使用**） |
 | POST | `/article/tag/list`      | `getTagListApi`         | `PageType`                                                               | `ResultPageType<ArticleTagItem>`（**暂未使用**）        |
+| POST | `/article/stat/category` | —                       | —                                                                        | `[{ id, name, count }]`（**前端暂未使用**）             |
+| POST | `/article/stat/column`   | —                       | —                                                                        | `[{ id, name, count }]`（**前端暂未使用**）             |
 | POST | `/blogger/profile/get`   | `getBloggerProfileApi`  | `{}`                                                                     | `BloggerProfileType`（仅 `introduction`）               |
 | POST | `/user/info`             | `getUserInfoApi`        | `{}`                                                                     | `{ id, name, avatar }`（**暂未使用**）                  |
 
@@ -415,16 +447,16 @@ my-blog-client/
 | --- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `layout/TopBar/components/SearchBtn.tsx`                           | 只有图标，无搜索弹窗/跳转逻辑                                                                                                                                                             |
 | 2   | `layout/TopBar/components/ThemeSwitcher.tsx`                       | 中控台图标（`AppstoreOutlined`）无点击行为                                                                                                                                                |
-| 3   | `pages/Home/components/Sidebar.tsx` 的 `TagCloud`                  | `tags` 写死为空数组，未调 `getTagListApi`，组件恒不渲染                                                                                                                                   |
-| 4   | `pages/Tag/index.tsx`                                              | 未按标签过滤，实际展示全部文章（接口无 tag 参数）                                                                                                                                         |
-| 5   | `store/useTheme.ts`                                                | `ThemeColor` 为 `blue \| purple \| orange`，但 `theme.css` 里只有 blue / purple / green——**orange 无对应 CSS 变量，green 无法通过类型选中**；且目前没有任何主题色切换 UI，只能用默认 blue |
-| 6   | `pages/NotFound/index.tsx`                                         | 无样式、无返回首页入口                                                                                                                                                                    |
-| 7   | `routes/ProtextedRoute.tsx`                                        | `ProtectedRoute` 已实现但未被任何路由引用                                                                                                                                                 |
-| 8   | `api/article/column`、`api/article/tag`、`api/user.getUserInfoApi` | 已定义但无调用方                                                                                                                                                                          |
-| 9   | `CLAUDE.md`                                                        | 提到的 `@unocss/preset-icons` 实际未配置                                                                                                                                                  |
-| 10  | `store/useAuth.ts` 的 `csrfToken`                                  | 已存储但请求时实际是从 cookie 读 `csrftoken`，字段本身未被读取                                                                                                                            |
-| 11  | `src/ai/plan/self.md`                                              | 空文件                                                                                                                                                                                    |
-| 12  | 文章详情页                                                         | 无「上一篇/下一篇」「相关文章」「评论」等能力                                                                                                                                             |
+| 3   | `pages/Tag/index.tsx`                                              | 未按标签过滤，实际展示全部文章（接口无 tag 参数）                                                                                                                                         |
+| 4   | `store/useTheme.ts`                                                | `ThemeColor` 为 `blue \| purple \| orange`，但 `theme.css` 里只有 blue / purple / green——**orange 无对应 CSS 变量，green 无法通过类型选中**；且目前没有任何主题色切换 UI，只能用默认 blue |
+| 5   | `pages/NotFound/index.tsx`                                         | 无样式、无返回首页入口                                                                                                                                                                    |
+| 6   | `routes/ProtextedRoute.tsx`                                        | `ProtectedRoute` 已实现但未被任何路由引用                                                                                                                                                 |
+| 7   | `api/article/column`、`api/article/tag` 的 `getTagListApi`、`api/user.getUserInfoApi` | 已定义但无调用方（同文件的 `getTagStatApi` 已用于归档页与首页侧边栏）                                                                                                                     |
+| 8   | `CLAUDE.md`                                                        | 提到的 `@unocss/preset-icons` 实际未配置                                                                                                                                                  |
+| 9   | `store/useAuth.ts` 的 `csrfToken`                                  | 已存储但请求时实际是从 cookie 读 `csrftoken`，字段本身未被读取                                                                                                                            |
+| 10  | `src/ai/plan/self.md`                                              | 空文件                                                                                                                                                                                    |
+| 11  | 文章详情页                                                         | 无「上一篇/下一篇」「相关文章」「评论」等能力                                                                                                                                             |
+| 12  | `uno.config.ts` 的 `app-wrapper` 背景                              | 用 `background-attachment: fixed` 固定渐变，**iOS Safari 支持不佳**（会退化成随页面滚动）；移动端要做到背景固定需改用 `position: fixed` 伪元素承载                                          |
 
 ---
 
@@ -433,3 +465,7 @@ my-blog-client/
 | 日期       | 变更                                                                                 |
 | ---------- | ------------------------------------------------------------------------------------ |
 | 2026-09-12 | 首次生成：梳理项目概述、技术栈、目录结构、路由、功能、公共能力层、接口清单与待完成项 |
+| 2026-09-13 | 新增归档页：路由 `/archive` + 顶部导航项；新增接口 `POST /article/archive`（不分页、支持标签筛选）；改造 `POST /article/stat/tag`（补 `status`/`visible` 过滤、返回补 `alias`/`color`、去掉逐标签 N+1 查询）；新增 `pages/Archive`、`api/article/archive`、类型 `ArticleArchiveItemType`/`ArticleTagStatType`；补充 `/article/stat/category`、`/article/stat/column` 两个此前漏记的接口 |
+| 2026-09-13 | 修复 `services/request.ts`：`createRequest` 4 个方法改用 `unwrapResponse<T>` 断言（axios 1.20 的 `AxiosResponseResult` 条件类型无法用裸类型参数解析，此前 `pnpm build` 因 4 个 TS2322 失败）；修掉 `getCookie` 正则里的 `no-useless-escape`（此前 `pnpm lint` 失败）；技术栈 axios 版本由 1.11 修正为 1.20 |
+| 2026-09-13 | 首页改版：新增 `pages/Home/components/CategoryFilter.tsx`（顶部分类就地筛选，两级树，不跳转，切换重置页码 + `requestIdRef` 丢弃过期响应）；文章列表改两列网格；`ArticleCard` 增加 `variant` 属性（`list` 横向 / `grid` 竖向封面在上），元信息与标签抽成 `ArticleMeta`/`TagList`；`Sidebar` 移除分类模块；`uno.config.ts` 的 `app-wrapper` 叠加随主题色变化的柔和对角渐变、新增 `card-glass` 规则。**未改后端**（`/article/list` 早已支持 `category` 参数且父分类自动含子分类） |
+| 2026-09-13 | 首页视觉修正：`app-wrapper` 渐变改用 `background-attachment: fixed`（此前 `background-size: 100% 100vh` 会把渐变画在元素首屏位置，滚动时背景跟着滚走），混色比例由 16/6/0 提高到 26/12/4 以拉开背景与卡片的对比；`card-glass` 不透明度 80% → 92%；首页网格卡片与分类筛选栏补静态 `shadow`；`Sidebar` 的 `TagCloud` 占位改为真实的 `TagStat`（调 `POST /article/stat/tag`，chip 带数量、点击跳 `/archive?tag=<id>`，限高内滚）；`pages/Archive` 的标签筛选改由 URL `?tag=` 承载（`useSearchParams`），使首页侧边栏可直接带标签跳入 |

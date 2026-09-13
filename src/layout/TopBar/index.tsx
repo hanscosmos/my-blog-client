@@ -19,6 +19,7 @@ export default function TopBar() {
 
   const navList = [
     { name: "首页", path: "/" },
+    { name: "归档", path: "/archive" },
     { name: "关于", path: "/about" },
   ];
 
