@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getArticleHotListApi } from "@/api/article";
 import { getTagStatApi } from "@/api/article/tag";
+import TagBadge from "@/components/TagBadge";
 import { useNavigate } from "react-router-dom";
 
 /* ---------- 热门文章组件 ---------- */
@@ -62,14 +63,13 @@ function TagStat() {
       {/* 标签较多时限高滚动，避免侧边栏 sticky 后内容超出视口无法触及 */}
       <div className="flex flex-wrap gap-2 max-h-72 overflow-y-auto">
         {tags.map((tag) => (
-          <span
+          <TagBadge
             key={tag.id}
-            className="text-xs px-2 py-1 rounded border border-solid border-border text-muted cursor-pointer transition-linear hover:text-primary hover:border-primary"
+            name={tag.name}
+            color={tag.color}
+            count={tag.count}
             onClick={() => navigate(`/archive?tag=${tag.id}`)}
-          >
-            #{tag.name}
-            <span className="ml-1">{tag.count}</span>
-          </span>
+          />
         ))}
       </div>
     </div>

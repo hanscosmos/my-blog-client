@@ -1,4 +1,5 @@
 import defaultCover from "@/assets/images/common-article-cover.png";
+import TagBadge from "@/components/TagBadge";
 import { formatDate } from "@/utils/tool";
 import React from "react";
 
@@ -37,12 +38,7 @@ const TagList: React.FC<{ tags: ArticleItemType["tags"] }> = ({ tags }) => {
   return (
     <div className="flex flex-wrap gap-2 mt-3">
       {tags.map((tag) => (
-        <span
-          key={tag.id}
-          className="text-xs px-2 py-0.5 rounded bg-container text-muted"
-        >
-          #{tag.name}
-        </span>
+        <TagBadge key={tag.id} name={tag.name} color={tag.color} />
       ))}
     </div>
   );

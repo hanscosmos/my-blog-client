@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getArticleDetailApi, getArticleReadStatApi } from "@/api/article";
 import ArticleDetail from "./components/ArticleDetail";
+import TagBadge from "@/components/TagBadge";
 import { formatDate } from "@/utils/tool";
 
 export default function Article() {
@@ -64,12 +65,7 @@ export default function Article() {
         {article.tagList.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4">
             {article.tagList.map((tag) => (
-              <span
-                key={tag.id}
-                className="text-xs px-2 py-0.5 rounded bg-container text-muted"
-              >
-                #{tag.name}
-              </span>
+              <TagBadge key={tag.id} name={tag.name} color={tag.color} />
             ))}
           </div>
         )}

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Skeleton } from "antd";
 import { getArticleArchiveApi } from "@/api/article/archive";
 import { getTagStatApi } from "@/api/article/tag";
+import TagBadge from "@/components/TagBadge";
 import { formatDate } from "@/utils/tool";
 
 export default function Archive() {
@@ -79,23 +80,17 @@ export default function Archive() {
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {tagStats.map((tag) => {
-              const active = activeTag === tag.id;
-              return (
-                <span
-                  key={tag.id}
-                  className={`text-sm px-2 py-1 rounded border border-solid cursor-pointer transition-linear ${
-                    active
-                      ? "bg-primary text-white border-primary"
-                      : "text-muted border-border hover:text-primary hover:border-primary"
-                  }`}
-                  onClick={() => toggleTag(tag.id)}
-                >
-                  #{tag.name}
-                  <span className="ml-1">{tag.count}</span>
-                </span>
-              );
-            })}
+            {tagStats.map((tag) => (
+              <TagBadge
+                key={tag.id}
+                name={tag.name}
+                color={tag.color}
+                count={tag.count}
+                size="md"
+                active={activeTag === tag.id}
+                onClick={() => toggleTag(tag.id)}
+              />
+            ))}
           </div>
         </div>
       )}
