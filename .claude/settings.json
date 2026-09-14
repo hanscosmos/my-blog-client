@@ -6,7 +6,15 @@
       "Bash(cd e:/myself/project/my-blog && grep -rn \"stat/tag\\\\|count_by_tag\\\\|stat/category\" --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.py\" my-blog-admin/src my-blog-client/src my-blog-service/modules 2>/dev/null)",
       "Read(//e/myself/project/my-blog/**)",
       "Bash(npx tsc *)",
-      "Bash(echo \"=== TSC EXIT: $? ===\")"
+      "Bash(echo \"=== TSC EXIT: $? ===\")",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/client/comment/list -H 'Content-Type: application/json' -d '{\"targetType\":\"message\",\"pageNumber\":1,\"pageSize\":10}' --max-time 8)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/client/comment/add -H 'Content-Type: application/json' -d '{\"targetType\":\"message\",\"content\":\"测试评论\"}' --max-time 8)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/client/comment/list -H 'Content-Type: application/json' -d '{\"targetType\":\"bogus\",\"pageNumber\":1,\"pageSize\":10}' --max-time 8)",
+      "Bash(curl -s -X POST http://127.0.0.1:8888/api/client/comment/list -H 'Content-Type: application/json' -d '{\"targetType\":\"message\",\"pageNumber\":1,\"pageSize\":10}' --max-time 8)",
+      "Bash(curl -s -X POST http://127.0.0.1:8888/api/client/comment/add -H 'Content-Type: application/json' -H 'Authorization: bad.token.here' -d '{\"targetType\":\"message\",\"content\":\"x\"}' --max-time 8)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm lint *)",
+      "Bash(find /Users/hanqian/Documents/project/my-blog/my-blog-service/modules/comment -type f -name *.py)"
     ],
     "additionalDirectories": [
       "e:\\myself\\project\\my-blog\\my-blog-service\\modules\\client"

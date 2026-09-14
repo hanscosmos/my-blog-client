@@ -20,6 +20,7 @@ export default function TopBar() {
   const navList = [
     { name: "首页", path: "/" },
     { name: "归档", path: "/archive" },
+    { name: "留言", path: "/message" },
     { name: "关于", path: "/about" },
   ];
 
@@ -51,9 +52,14 @@ export default function TopBar() {
   ];
 
   return (
-    <div className="top-bar bg-bg border-bottom flex-between h-60px px-4 w-full fixed top-0 z-10">
+    <div className="top-bar top-bar-bg flex-between h-60px px-4 w-full fixed top-0 z-10">
       <div className="flex items-center">
-        <span className="font-bold">与君同的博客</span>
+        <span
+          className="font-bold text-hovers"
+          onClick={() => gotoRelatedPage("/")}
+        >
+          与君同的博客
+        </span>
       </div>
       <div className="nav-wrapper">
         <ul className="flex">

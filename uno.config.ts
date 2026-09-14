@@ -1,5 +1,16 @@
 import { defineConfig, presetUno, presetAttributify } from "unocss";
 
+// 页面整体背景：由主色与页面底色混合出的柔和对角渐变，自动跟随主题色与明暗模式。
+// background-attachment: fixed 把绘制区域锚定到视口，页面滚动时背景不会跟着滚走。
+// 顶部导航栏复用同一份渐变，因此它画出来的正是视口顶部那一段，与下方页面像素级衔接。
+const pageBackground = {
+  "background-image":
+    "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 26%, var(--color-bg)) 0%, color-mix(in srgb, var(--color-primary) 12%, var(--color-bg)) 45%, color-mix(in srgb, var(--color-primary) 4%, var(--color-bg)) 100%)",
+  "background-repeat": "no-repeat",
+  "background-attachment": "fixed",
+  "background-size": "100% 100%",
+};
+
 export default defineConfig({
   presets: [
     presetUno(), // 核心原子类
@@ -43,13 +54,7 @@ export default defineConfig({
       "app-wrapper",
       {
         "background-color": "var(--color-bg)",
-        // 由主色与页面底色混合出的柔和对角渐变，自动跟随主题色与明暗模式。
-        // background-attachment: fixed 把绘制区域锚定到视口，页面滚动时背景不会跟着滚走。
-        "background-image":
-          "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 26%, var(--color-bg)) 0%, color-mix(in srgb, var(--color-primary) 12%, var(--color-bg)) 45%, color-mix(in srgb, var(--color-primary) 4%, var(--color-bg)) 100%)",
-        "background-repeat": "no-repeat",
-        "background-attachment": "fixed",
-        "background-size": "100% 100%",
+        ...pageBackground,
         color: "var(--color-text)",
         "padding-top": "60px",
       },
@@ -61,6 +66,14 @@ export default defineConfig({
         "background-color":
           "color-mix(in srgb, var(--color-container-bg) 92%, transparent)",
         "backdrop-filter": "blur(8px)",
+      },
+    ],
+    // 顶部导航栏：复用页面同一份视口锚定渐变，与整体背景无缝衔接，因此不需要分隔线
+    [
+      "top-bar-bg",
+      {
+        "background-color": "var(--color-bg)",
+        ...pageBackground,
       },
     ],
     ["transition-linear", { transition: "all 0.5s linear" }],

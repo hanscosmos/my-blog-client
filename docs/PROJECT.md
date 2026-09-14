@@ -19,7 +19,7 @@
 | 项目 | 说明                                                                    |
 | ---- | ----------------------------------------------------------------------- |
 | 名称 | my-blog-client                                                          |
-| 定位 | 博客前台展示端（阅读文章、按分类/标签浏览、知识博主信息、登录）         |
+| 定位 | 博客前台展示端（阅读文章、按分类/标签浏览、归档、评论与留言板、博主信息、登录） |
 | 类型 | 单页应用（SPA），纯客户端渲染                                           |
 | 后端 | 同仓库组内的 `my-blog-service`，开发期通过 Vite 代理 `/api`             |
 | 鉴权 | JWT（access token + refresh token）+ CSRF cookie，持久化在 localStorage |
@@ -101,7 +101,7 @@ my-blog-client/
 │   └── vite.svg
 ├── src/
 │   ├── ai/                     # AI 协作产物（不参与构建）
-│   │   ├── plan/               # 方案/计划文档（login.md、self.md）
+│   │   ├── plan/               # 方案/计划文档（login.md、self.md、comment.md）
 │   │   └── memory/             # 对话沉淀文档（由 /log skill 生成）
 │   ├── api/                    # 接口层：按业务模块拆分，一函数一接口
 │   │   ├── article/
@@ -111,10 +111,14 @@ my-blog-client/
 │   │   │   ├── column/         # 专栏列表（已定义，暂未使用）
 │   │   │   └── tag/            # 标签列表（暂未使用） / 标签统计
 │   │   ├── blogger/            # 博主公开资料（关于页）
+│   │   ├── comment/            # 评论列表 / 发表 / 删除
 │   │   └── user/               # 登录 / 刷新 token / 验证码 / 用户信息
 │   ├── assets/                 # 静态资源（webpack/vite 处理，走 import）
 │   │   ├── font/               # 自定义字体（roboto、NotoSansSC、zcool、ali、YouSheBiaoTiHei）
 │   │   └── images/             # logo.jpg、common-article-cover.png（文章默认封面）
+│   ├── components/             # 跨页面复用的业务组件（非 pages 私有）
+│   │   └── CommentSection/
+│   │       └── index.tsx       # 通用评论区：文章评论与留言板共用，靠 targetType/targetId 区分
 │   ├── layout/
 │   │   ├── MainLayout.tsx      # 主布局：顶部导航 + 1080px 居中内容区（<Outlet/>）
 │   │   └── TopBar/
@@ -138,6 +142,7 @@ my-blog-client/
 │   │   ├── Category/index.tsx  # 分类文章列表（alias → 分类 id → 文章列表）
 │   │   ├── Tag/index.tsx       # 标签文章列表
 │   │   ├── Login/index.tsx     # 登录页：用户名/密码/图形验证码，MD5 加密提交
+│   │   ├── Message/index.tsx   # 留言板：引导文案 + 复用 CommentSection
 │   │   └── NotFound/index.tsx  # 404 页
 │   ├── routes/
 │   │   ├── index.tsx           # 路由表（React.lazy 懒加载页面）
@@ -156,7 +161,8 @@ my-blog-client/
 │   │   ├── index.d.ts          # 全局通用类型（PageType/ResultPageType/IdType）
 │   │   └── api/
 │   │       ├── article.d.ts    # 文章、分类、专栏、标签相关类型
-│   │       └── blogger.d.ts    # 博主资料类型
+│   │       ├── blogger.d.ts    # 博主资料类型
+│   │       └── comment.d.ts    # 评论相关类型
 │   ├── utils/
 │   │   └── tool.ts             # 通用工具（formatDate）
 │   ├── App.tsx                 # 挂载 RouterProvider
@@ -171,7 +177,10 @@ my-blog-client/
 └── index.html                  # HTML 模板（标题：与君同的博客）
 ```
 
-**分层约定**：`pages`（页面组装） → `api`（接口调用） → `services/request`（HTTP 基础设施）；跨页面共享状态放 `store`，跨页面共享视图组件放对应 `pages/*/components`（当前即 `ArticleCard`）。
+**分层约定**：`pages`（页面组装） → `api`（接口调用） → `services/request`（HTTP 基础设施）；跨页面共享状态放 `store`。视图组件按复用范围放置：
+
+- **只被本页使用** → `pages/*/components`（如 `ArticleCard`、`ArticleDetail`、`CategoryFilter`）
+- **被多个页面共用** → `src/components/*`（当前即 `CommentSection`，文章详情页与留言板共用）
 
 ---
 
@@ -185,6 +194,7 @@ my-blog-client/
 | `/article/:id`     | `pages/Article`  | MainLayout | 无            | 文章详情                          |
 | `/about`           | `pages/About`    | MainLayout | 无            | 关于博主                          |
 | `/archive`         | `pages/Archive`  | MainLayout | 无            | 归档：按年分组的时间线 + 标签筛选 |
+| `/message`         | `pages/Message`  | MainLayout | 无            | 留言板（评论的一种 `targetType`） |
 | `/category/:alias` | `pages/Category` | MainLayout | 无            | 分类文章列表（按 alias 定位分类） |
 | `/tag/:alias`      | `pages/Tag`      | MainLayout | 无            | 标签文章列表                      |
 | `/login`           | `pages/Login`    | 无         | `PublicRoute` | 已登录访问会重定向到 `/`          |
@@ -199,7 +209,7 @@ my-blog-client/
 ### 1. 顶部导航栏（`layout/TopBar`）
 
 - 站点名称「与君同的博客」
-- 导航项：首页 `/`、归档 `/archive`、关于 `/about`；当前路径匹配时高亮（`text-primary`）
+- 导航项：首页 `/`、归档 `/archive`、留言 `/message`、关于 `/about`；当前路径匹配时高亮（`text-primary`）
 - 搜索图标：**占位，暂无交互**
 - 主题切换：明/暗模式一键切换（`ThemeSwitcher`）
 - 中控台图标：**占位，暂无交互**
@@ -257,6 +267,7 @@ my-blog-client/
   - 按标题层级做字号/缩进区分，`lg` 断点以下隐藏
 - 右下角 antd `FloatButton.BackTop` 回到顶部
 - 文章不存在时显示占位文案 + 「返回首页」
+- 正文下方为评论区 `CommentSection`（`key={baseInfo.id}`，切换文章时整体重置分页与回复态）
 
 ### 6. 分类页（`pages/Category`）
 
@@ -301,7 +312,38 @@ my-blog-client/
 
 - 极简实现，仅输出 `❌ 404 Not Found` 文本，暂无样式与返回首页入口
 
-### 12. 需求沟通页（`src/ai`）
+### 12. 评论与留言板（`components/CommentSection`、`pages/Message`）
+
+文章评论与留言板共用同一个组件 `src/components/CommentSection/index.tsx`，靠 `targetType`（`article` / `message`）与 `targetId` 区分评论对象；留言板不传 `targetId`。
+
+**结构与排序**
+
+- **两级结构**：顶层评论 + 其下回复。回复**扁平存储**（不嵌套树），统一挂在所属顶层评论下
+- 顶层评论按时间**倒序**（最新在前），每页 10 条；回复按时间**正序**（最早在前）
+- 回复展示为「昵称 + 回复 @某人」（`replyUser`），顶层评论不显示该字段
+- 顶层评论头像 40px，回复头像 28px，回复区整体以左侧竖线缩进，形成层级
+
+**发表**
+
+- **登录后才能发表**；未登录时输入框位置显示「登录后才可以发表评论」+ 「去登录」按钮
+- 输入框 `maxLength=500`，字数计数由组件自行渲染在按钮左侧（**不用 antd 的 `showCount`**——它绝对定位在文本框右下角，会与右对齐的发表按钮重叠）
+- 点某条评论的「回复」→ 输入框上方出现「正在回复 @某人」（可取消），提交时带 `rootId`（楼层）与 `replyUser`（被回复者）
+- 提交回复**不整页重拉**，按接口返回的 `rootId` 就地追加到对应楼层；提交顶层评论时回第 1 页重拉
+
+**删除**
+
+- 每条评论是否可删由后端返回的 `canDelete` 决定（评论作者本人 或 该内容的作者/博主），前端不判断身份
+- 删除前 `Modal.confirm` 二次确认；**删除顶层评论会连带删除其下所有回复**
+- 删除后重拉当前页；若该页被删空，`fetchList` 检测到 `result.length === 0 && total > 0 && page > 1` 会**自动回退一页**
+- 空状态判定用 `total === 0`（而非 `list.length === 0`），避免删空某一页时误显示「还没有评论」
+
+**留言板（`pages/Message`）**
+
+- 路由 `/message`，顶部导航「留言」进入
+- 一张引导文案卡片 + `CommentSection`（`targetType="message"`，无 `targetId`）
+- 留言板的「内容作者」（即有权删除任意留言的人）由后端取 `BloggerProfile` 的第一条记录
+
+### 13. 需求沟通页（`src/ai`）
 
 - 不参与构建，用于沉淀 AI 协作产物：`plan/` 存方案，`memory/` 存对话纪要（`/log` skill 生成）
 
@@ -385,7 +427,9 @@ my-blog-client/
 | `title-lg` / `title-md`                          | `text-3xl font-bold` / `text-2xl font-semibold`        |
 | `text-muted` / `text-primary` / `text-secondary` | 文字色                                                 |
 
-**自定义 rules**：`app-wrapper`（页面底色 + 柔和对角渐变背景 + 文字色 + `padding-top: 60px`）、`card-glass`（`--color-container-bg` 80% 透明度 + `backdrop-filter: blur(8px)`，用于浮在渐变上的卡片/筛选栏/分页条）、`transition-linear`（`transition: all 0.5s linear`）。
+**自定义 rules**：`app-wrapper`（页面底色 + 柔和对角渐变背景 + 文字色 + `padding-top: 60px`）、`top-bar-bg`（复用 `app-wrapper` 同一份视口锚定渐变，因此顶部导航栏与页面背景像素级衔接，不需要分隔线）、`card-glass`（`--color-container-bg` 80% 透明度 + `backdrop-filter: blur(8px)`，用于浮在渐变上的卡片/筛选栏/分页条）、`transition-linear`（`transition: all 0.5s linear`）。
+
+> `app-wrapper` 与 `top-bar-bg` 的渐变由文件内的 `pageBackground` 常量统一提供，改背景只需改这一处。
 
 **字体**（`style/index.css` 中 `@font-face`）：`roboto`、`NotoSansSC`、`ZCOOLKuaiLe`、`Ali FangYuan`、`YouSheBiaoTiHei`。目前仅在 CSS 中声明，尚未在任何页面的 `font-family` 中强制使用。
 
@@ -398,6 +442,7 @@ my-blog-client/
 - `src/types/index.d.ts` — `PageType`（`pageNumber`/`pageSize`）、`ResultPageType<T>`（`total`/`result`）、`IdType`
 - `src/types/api/article.d.ts` — `QueryType`、`ArticleTagItem`、`ArticleItemType`（列表项）、`ArticleDetailType`（含 `baseInfo`/`authorInfo`/`categoryInfo`/`tagList`/`detailInfo`）、`ArticleCategoryItemType`、`ArticleColumnItemType`、`ArticleArchiveItemType`（归档项）、`ArticleTagStatType`（标签统计项）
 - `src/types/api/blogger.d.ts` — `BloggerProfileType`
+- `src/types/api/comment.d.ts` — `CommentTargetType`（`"article" | "message"`）、`CommentUserType`、`CommentReplyItemType`（回复项，含定位楼层用的 `rootId`）、`CommentItemType`（顶层评论，内嵌 `replies`）、`CommentListResType`、`CommentAddParams`、`CommentAddResType`
 
 ### 工具函数
 
@@ -425,7 +470,18 @@ my-blog-client/
 | POST | `/article/stat/category` | —                       | —                                                                        | `[{ id, name, count }]`（**前端暂未使用**）             |
 | POST | `/article/stat/column`   | —                       | —                                                                        | `[{ id, name, count }]`（**前端暂未使用**）             |
 | POST | `/blogger/profile/get`   | `getBloggerProfileApi`  | `{}`                                                                     | `BloggerProfileType`（仅 `introduction`）               |
+| POST | `/comment/list`          | `getCommentListApi`     | `PageType & { targetType, targetId? }`                                   | `CommentListResType`（`{ total, totalCount, result }`） |
+| POST | `/comment/add`           | `addCommentApi`         | `{ targetType, targetId?, content, rootId?, replyUser? }`                | `CommentAddResType`（扁平评论对象，含 `rootId`）        |
+| POST | `/comment/delete`        | `deleteCommentApi`      | `{ id }`                                                                 | `true`                                                  |
 | POST | `/user/info`             | `getUserInfoApi`        | `{}`                                                                     | `{ id, name, avatar }`（**暂未使用**）                  |
+
+> **评论接口补充说明**
+>
+> - `targetType` 取值 `article` / `message`。`targetType="article"` 时 `targetId` 必传（文章 id）；`message` 时不需要
+> - 三个接口都是 `POST`，匿名可访问（中间件对 `/client/` 不做 JWT 校验），但 `add` / `delete` 在视图内**要求登录**，未登录返回 `401` + 「请先登录后再评论」
+> - `list` 返回的每条评论都带 **`canDelete`**（后端逐条算好：评论作者本人，或该内容的作者/博主），前端据此决定是否渲染「删除」，**不需要自己判断身份**
+> - `add` 传 `rootId` 表示回复该楼层；此时 `replyUser` 必传（被回复者 id）。传 `replyUser` 等于自己会被拒（`501` + 「不能回复自己的评论」）
+> - 列表本身**固定 4 条 SQL**（顶层分页 / 回复 / 用户 / 回复数），不会随评论条数增长
 
 ### 管理端（`adminRequest`，baseURL `/api`）
 
@@ -455,8 +511,12 @@ my-blog-client/
 | 8   | `CLAUDE.md`                                                        | 提到的 `@unocss/preset-icons` 实际未配置                                                                                                                                                  |
 | 9   | `store/useAuth.ts` 的 `csrfToken`                                  | 已存储但请求时实际是从 cookie 读 `csrftoken`，字段本身未被读取                                                                                                                            |
 | 10  | `src/ai/plan/self.md`                                              | 空文件                                                                                                                                                                                    |
-| 11  | 文章详情页                                                         | 无「上一篇/下一篇」「相关文章」「评论」等能力                                                                                                                                             |
+| 11  | 文章详情页                                                         | 无「上一篇/下一篇」「相关文章」等能力                                                                                                                                                     |
 | 12  | `uno.config.ts` 的 `app-wrapper` 背景                              | 用 `background-attachment: fixed` 固定渐变，**iOS Safari 支持不佳**（会退化成随页面滚动）；移动端要做到背景固定需改用 `position: fixed` 伪元素承载                                          |
+| 13  | `components/CommentSection`                                        | 只支持**纯文本**评论，不支持表情/图片。后端 `content` 是 `CharField(500)`；改富文本要同步改字段类型、**必须做 XSS 过滤**（否则是存储型 XSS）、图片走 `resource` 模块上传并考虑引用计数、重新定义长度校验语义、兼容历史纯文本数据。详见 `src/ai/plan/comment.md` 遗留项 |
+| 14  | 评论消息提醒                                                       | **未实现**。被回复/被评论时通知对方；后端当前没有通知模型，`my-blog-admin` 的 `MessageBtn` 也只是图标占位（无点击无接口）                                                                  |
+| 15  | 前台注册入口                                                       | **未实现**。前台没有注册页，用户只能由后台添加；因此「登录后才能评论」目前依赖博主先在后台开号。后端 `/user/add` 是管理端接口（需 JWT + 权限码），不能给前台复用                       |
+| 16  | 评论审核                                                           | `Comment.status` 默认 `visible`，即**先发后审**；但两个前端都没有评论管理界面，被置为非 `visible` 的评论目前没有操作入口                                                                  |
 
 ---
 
@@ -469,3 +529,6 @@ my-blog-client/
 | 2026-09-13 | 修复 `services/request.ts`：`createRequest` 4 个方法改用 `unwrapResponse<T>` 断言（axios 1.20 的 `AxiosResponseResult` 条件类型无法用裸类型参数解析，此前 `pnpm build` 因 4 个 TS2322 失败）；修掉 `getCookie` 正则里的 `no-useless-escape`（此前 `pnpm lint` 失败）；技术栈 axios 版本由 1.11 修正为 1.20 |
 | 2026-09-13 | 首页改版：新增 `pages/Home/components/CategoryFilter.tsx`（顶部分类就地筛选，两级树，不跳转，切换重置页码 + `requestIdRef` 丢弃过期响应）；文章列表改两列网格；`ArticleCard` 增加 `variant` 属性（`list` 横向 / `grid` 竖向封面在上），元信息与标签抽成 `ArticleMeta`/`TagList`；`Sidebar` 移除分类模块；`uno.config.ts` 的 `app-wrapper` 叠加随主题色变化的柔和对角渐变、新增 `card-glass` 规则。**未改后端**（`/article/list` 早已支持 `category` 参数且父分类自动含子分类） |
 | 2026-09-13 | 首页视觉修正：`app-wrapper` 渐变改用 `background-attachment: fixed`（此前 `background-size: 100% 100vh` 会把渐变画在元素首屏位置，滚动时背景跟着滚走），混色比例由 16/6/0 提高到 26/12/4 以拉开背景与卡片的对比；`card-glass` 不透明度 80% → 92%；首页网格卡片与分类筛选栏补静态 `shadow`；`Sidebar` 的 `TagCloud` 占位改为真实的 `TagStat`（调 `POST /article/stat/tag`，chip 带数量、点击跳 `/archive?tag=<id>`，限高内滚）；`pages/Archive` 的标签筛选改由 URL `?tag=` 承载（`useSearchParams`），使首页侧边栏可直接带标签跳入 |
+| 2026-09-14 | **新增评论功能与留言板**。后端：新建 `modules/comment`（`Comment` 单表，靠 `targetType`/`targetId` 区分评论对象、`rootId` 表达两级结构）与 `modules/client/comment_views.py`，新增 3 个接口 `POST /comment/list`（顶层分页 + 内嵌全部回复，固定 4 条 SQL）、`POST /comment/add`、`POST /comment/delete`（顶层删除连带软删回复）；`BloggerProfile` 提供留言板的内容作者。前端：新增通用组件 `src/components/CommentSection`（文章详情页与留言板共用）、`src/pages/Message`、路由 `/message` 与导航项「留言」、`api/comment`、`types/api/comment.d.ts`；`canDelete` 由后端逐条下发，前端不判断身份。**未做前台注册入口**（用户明确本次跳过，用户由后台添加） |
+| 2026-09-14 | 评论功能页面实测问题修复：① 回复补头像（`ReplyItem` 改 flex 行，回复 28px / 顶层 40px 形成层级）；② **修后端真 bug**——「不能回复自己的评论」原本拿**顶层评论作者**与当前用户比对，导致自己的评论一旦被人回复就整个楼层锁死，改为比对**被回复者** `replyUser`；③ 发表按钮遮挡字数计数——去掉 antd `showCount`（绝对定位在右下角必然重叠），改为组件自行在按钮左侧渲染；④ 富文本评论（表情/图片）按用户要求仅记录未实现，已列入「占位与待完成项」第 13 项 |
+| 2026-09-14 | 顶部导航栏背景与页面渐变对齐：`uno.config.ts` 抽出 `pageBackground` 常量供 `app-wrapper` 与新增的 `top-bar-bg` shortcut 共用，使导航栏画出的正是视口顶部那一段渐变，与页面像素级衔接，故不再需要分隔线 |

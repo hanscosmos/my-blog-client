@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getArticleDetailApi, getArticleReadStatApi } from "@/api/article";
 import ArticleDetail from "./components/ArticleDetail";
 import TagBadge from "@/components/TagBadge";
+import CommentSection from "@/components/CommentSection";
 import { formatDate } from "@/utils/tool";
 
 export default function Article() {
@@ -82,6 +83,13 @@ export default function Article() {
 
       {/* 文章内容 */}
       <ArticleDetail content={article.detailInfo.content} />
+
+      {/* 评论区：key 用文章 id，切换文章时整体重置（分页与回复态） */}
+      <CommentSection
+        key={article.baseInfo.id}
+        targetType="article"
+        targetId={article.baseInfo.id}
+      />
     </div>
   );
 }

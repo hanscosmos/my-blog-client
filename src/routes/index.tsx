@@ -11,6 +11,7 @@ const Article = React.lazy(() => import("@/pages/Article"));
 const CategoryPage = React.lazy(() => import("@/pages/Category"));
 const TagPage = React.lazy(() => import("@/pages/Tag"));
 const Login = React.lazy(() => import("@/pages/Login"));
+const Message = React.lazy(() => import("@/pages/Message"));
 const NotFound = React.lazy(() => import("@/pages/NotFound"));
 
 const router = createBrowserRouter([
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
       {
         path: "archive",
         element: <Archive />,
+      },
+      {
+        path: "message",
+        element: <Message />,
       },
       {
         path: "category/:alias",
