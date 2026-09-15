@@ -1,0 +1,80 @@
+/*
+ * 评论正文排版
+ *
+ * 评论内容是用户产出的 markdown，元素范围与文章正文一致，
+ * 因此直接复用 .article-content（代码块、引用、列表、表格等），
+ * 这里只覆盖评论场景需要更紧凑的字号与间距。
+ * 覆盖依赖 index.css 中的引入顺序（comment.css 在 article.css 之后）。
+ */
+
+.comment-content {
+  font-size: 14px;
+}
+
+/* 首尾元素不留外边距，避免评论项之间出现多余空隙 */
+.comment-content > :first-child {
+  margin-top: 0;
+}
+
+.comment-content > :last-child {
+  margin-bottom: 0;
+}
+
+.comment-content p {
+  margin-top: 0;
+  margin-bottom: 0.6em;
+  line-height: 1.7;
+}
+
+/* 评论里标题只作层级提示，不放大、不加下边框 */
+.comment-content h1,
+.comment-content h2,
+.comment-content h3,
+.comment-content h4,
+.comment-content h5,
+.comment-content h6 {
+  font-size: 1em;
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/*
+ * 图片独占一行。
+ * markdown 渲染出的 img 默认是行内元素，一张 240px 高的图挤在文字行里会把行撑开，
+ * 两侧文字贴着图片底边对齐；即使图片自己占一行，也会被 <p> 的 line-height 顶出错位。
+ * 这里统一改块级，无论图片在源码里处于什么位置都独占一行。
+ */
+.comment-content img {
+  display: block;
+  margin: 0.5em 0;
+  max-height: 240px;
+}
+
+.comment-content ul,
+.comment-content ol,
+.comment-content blockquote,
+.comment-content table,
+.comment-content pre,
+.comment-content .code-block {
+  margin-top: 0.6em;
+  margin-bottom: 0.6em;
+}
+
+/* 评论区宽度有限，行内代码允许折行，不要横向溢出 */
+.comment-content code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 代码块在评论里缩小字号并限高，避免长代码撑爆列表 */
+.comment-content pre code,
+.comment-content .code-block-code {
+  font-size: 12px;
+}
+
+.comment-content pre,
+.comment-content .code-block {
+  max-height: 320px;
+}

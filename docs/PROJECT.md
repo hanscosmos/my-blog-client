@@ -45,8 +45,9 @@
 
 | 库                                         | 用途                                             |
 | ------------------------------------------ | ------------------------------------------------ |
-| `react-markdown` + `remark-gfm`            | Markdown 正文渲染（支持 GFM 表格、任务列表等）   |
-| `rehype-slug` + `rehype-autolink-headings` | 标题生成锚点 id，供目录（TOC）跳转               |
+| `react-markdown` + `remark-gfm`            | Markdown 渲染（支持 GFM 表格、任务列表等）       |
+| `remark-breaks`                            | 单个换行渲染为 `<br>`（评论沿用纯文本时代的换行习惯，仅评论启用） |
+| `rehype-slug` + `rehype-autolink-headings` | 标题生成锚点 id，供目录（TOC）跳转（仅文章正文） |
 | `highlight.js`                             | 代码块语法高亮（主题：`github.css`）             |
 | `dayjs`                                    | 日期格式化（`src/utils/tool.ts`）                |
 | `crypto-js`                                | 登录密码 MD5 加密                                |
@@ -112,13 +113,20 @@ my-blog-client/
 │   │   │   └── tag/            # 标签列表（暂未使用） / 标签统计
 │   │   ├── blogger/            # 博主公开资料（关于页）
 │   │   ├── comment/            # 评论列表 / 发表 / 删除
+│   │   ├── upload/             # 上传图片到 COS（评论插图用）
 │   │   └── user/               # 登录 / 刷新 token / 验证码 / 用户信息
 │   ├── assets/                 # 静态资源（webpack/vite 处理，走 import）
 │   │   ├── font/               # 自定义字体（roboto、NotoSansSC、zcool、ali、YouSheBiaoTiHei）
 │   │   └── images/             # logo.jpg、common-article-cover.png（文章默认封面）
 │   ├── components/             # 跨页面复用的业务组件（非 pages 私有）
-│   │   └── CommentSection/
-│   │       └── index.tsx       # 通用评论区：文章评论与留言板共用，靠 targetType/targetId 区分
+│   │   ├── CommentSection/
+│   │   │   └── index.tsx       # 通用评论区：文章评论与留言板共用，靠 targetType/targetId 区分
+│   │   ├── MarkdownContent/
+│   │   │   └── index.tsx       # 评论 markdown 渲染（GFM + 保留换行，不解析原始 HTML）
+│   │   ├── MarkdownEditor/
+│   │   │   ├── index.tsx       # 简易 markdown 编辑器：加粗/链接/图片/表情 + 编辑预览切换
+│   │   │   └── emojis.ts       # 表情面板数据
+│   │   └── TagBadge.tsx        # 标签胶囊（颜色取自 utils/tagColor）
 │   ├── layout/
 │   │   ├── MainLayout.tsx      # 主布局：顶部导航 + 1080px 居中内容区（<Outlet/>）
 │   │   └── TopBar/
@@ -153,10 +161,11 @@ my-blog-client/
 │   │   ├── useAuth.ts          # 鉴权状态（token/refreshToken/csrfToken/userInfo/isLogin），persist
 │   │   └── useTheme.ts         # 主题状态（color/mode），写 data-* 属性 + localStorage
 │   ├── style/                  # 全局样式（在 main.tsx 统一引入 index.css）
-│   │   ├── index.css           # 汇总入口：reset + theme + article + @font-face
+│   │   ├── index.css           # 汇总入口：reset + theme + article + comment + @font-face
 │   │   ├── reset.css           # 样式重置
 │   │   ├── theme.css           # CSS 变量：多主题 × 明暗模式
-│   │   └── article.css         # 文章正文排版、代码块样式
+│   │   ├── article.css         # 文章正文排版、代码块样式
+│   │   └── comment.css         # 评论正文排版（复用 .article-content 并收紧字号间距）
 │   ├── types/
 │   │   ├── index.d.ts          # 全局通用类型（PageType/ResultPageType/IdType）
 │   │   └── api/
@@ -164,7 +173,9 @@ my-blog-client/
 │   │       ├── blogger.d.ts    # 博主资料类型
 │   │       └── comment.d.ts    # 评论相关类型
 │   ├── utils/
-│   │   └── tool.ts             # 通用工具（formatDate）
+│   │   ├── tagColor.ts         # 标签颜色字典（与后端 tag_color 一致）
+│   │   ├── tool.ts             # 通用工具（formatDate）
+│   │   └── upload.ts           # 图片校验 + 上传（uploadImage/validateImage）
 │   ├── App.tsx                 # 挂载 RouterProvider
 │   ├── main.tsx                # 应用入口：createRoot + 全局样式 + antd React19 补丁
 │   └── vite-env.d.ts
@@ -180,7 +191,7 @@ my-blog-client/
 **分层约定**：`pages`（页面组装） → `api`（接口调用） → `services/request`（HTTP 基础设施）；跨页面共享状态放 `store`。视图组件按复用范围放置：
 
 - **只被本页使用** → `pages/*/components`（如 `ArticleCard`、`ArticleDetail`、`CategoryFilter`）
-- **被多个页面共用** → `src/components/*`（当前即 `CommentSection`，文章详情页与留言板共用）
+- **被多个页面共用** → `src/components/*`（`CommentSection` 由文章详情页与留言板共用；`MarkdownEditor`/`MarkdownContent`/`TagBadge` 目前只被 `CommentSection` 及相关页面引用，但属通用组件）
 
 ---
 
@@ -326,9 +337,25 @@ my-blog-client/
 **发表**
 
 - **登录后才能发表**；未登录时输入框位置显示「登录后才可以发表评论」+ 「去登录」按钮
-- 输入框 `maxLength=500`，字数计数由组件自行渲染在按钮左侧（**不用 antd 的 `showCount`**——它绝对定位在文本框右下角，会与右对齐的发表按钮重叠）
+- 输入框为 markdown 编辑器（见下），`maxLength=2000`（与后端 `MAX_CONTENT_LENGTH` 一致），字数计数由组件自行渲染在按钮左侧（**不用 antd 的 `showCount`**——它绝对定位在文本框右下角，会与右对齐的发表按钮重叠）
 - 点某条评论的「回复」→ 输入框上方出现「正在回复 @某人」（可取消），提交时带 `rootId`（楼层）与 `replyUser`（被回复者）
 - 提交回复**不整页重拉**，按接口返回的 `rootId` 就地追加到对应楼层；提交顶层评论时回第 1 页重拉
+
+**正文格式（markdown）**
+
+评论正文存 markdown 源码，渲染与编辑分别由两个通用组件承担：
+
+| 组件 | 说明 |
+| --- | --- |
+| `components/MarkdownContent` | 渲染。`remark-gfm` + `remark-breaks`，**不启用 `rehype-raw`**（原始 HTML 被转义输出，react-markdown 默认的 `urlTransform` 拦掉 `javascript:` 协议，因此后端无需额外的 XSS 过滤层） |
+| `components/MarkdownEditor` | 编辑。工具栏（加粗 / 链接 / 上传图片 / 表情）+ 编辑预览切换，基于 antd `Input.TextArea` 自研，未引入第三方编辑器库 |
+| `utils/upload.ts` + `api/upload` | 图片上传：`POST /sys/file/upload`，返回 CDN URL 后以 `![图片](url)` 插入 |
+
+- `remark-breaks` **只给评论启用**：历史评论是纯文本、靠 `whitespace-pre-wrap` 保留换行，不补这个插件换行会塌掉；文章正文仍走原来的渲染器
+- 副作用：**单个换行会被渲染成 `<br>`，只有空行才是段落边界**。因此 `insertImage` 按「前后各补成恰好一个空行」的规则补位，让图片独立成段（源码干净，不依赖 CSS 补救）
+- 评论正文样式复用 `.article-content`，由 `style/comment.css` 覆盖为更紧凑的字号间距；覆盖**依赖 `index.css` 的引入顺序**（`comment.css` 在 `article.css` 之后），两者选择器特异性相同
+- 图片为块级显示（`.comment-content img { display: block }`），无论源码中处于什么位置都独占一行
+- 支持 Ctrl+V 粘贴剪贴板截图；剪贴板同时含文字时不拦截，避免吃掉正常文本粘贴
 
 **删除**
 
@@ -358,7 +385,7 @@ my-blog-client/
 | 导出                   | baseURL       | 用途                                   |
 | ---------------------- | ------------- | -------------------------------------- |
 | `default`（`request`） | `/api/client` | 前台客户端接口                         |
-| `adminRequest`         | `/api`        | 管理端接口（当前仅登录/刷新/验证码用） |
+| `adminRequest`         | `/api`        | 管理端接口（登录/刷新/验证码，以及评论配图上传） |
 
 `request` 额外挂载 `setCsrfCookie(token)`。
 
@@ -447,6 +474,8 @@ my-blog-client/
 ### 工具函数
 
 - `formatDate(date, format = "YYYY-MM-DD")` — dayjs 封装，`src/utils/tool.ts`
+- `getTagColorStyle(color)` — 标签颜色字典查表，`src/utils/tagColor.ts`
+- `validateImage(file)` / `uploadImage(file, dir)` — 图片格式与大小校验、组装 `FormData` 上传并返回 CDN URL，`src/utils/upload.ts`。**校验只是体验层的提前拦截，后端 `/sys/file/upload` 并不校验类型与大小，不能当作安全边界**
 
 ---
 
@@ -490,8 +519,11 @@ my-blog-client/
 | POST | `/user/login`      | `loginApi`        | `{ username, password(MD5), key, code }` | `{ userInfo, token, refreshToken, csrfToken }` |
 | POST | `/user/refresh`    | `refreshTokenApi` | `{ refreshToken }`                       | `{ token }`                                    |
 | POST | `/user/valid/code` | `getValidCodeApi` | `{ key }`                                | `string`（验证码文本）                         |
+| POST | `/sys/file/upload` | `uploadFileApi`   | `FormData{ file, name, type }`（`type` 为 COS 目录，如 `comment`） | `string`（CDN 完整 URL）（前台评论配图复用此接口） |
 
 > 注意：`request.ts` 内部刷新 token 时直接调用 `instance.post("/user/refresh", ...)`，与已导出的 `refreshTokenApi` 是两条路径；如需调整刷新逻辑，改 `request.ts` 里的那份。
+>
+> ⚠️ `/sys/file/upload` 挂在 `/sys` 下，**不走 `/client/*` 的免鉴权分支，需要登录态**（token 过期会返回 `401`）。前台评论配图直接复用它，没有单独的 `/client/file/upload`。后端对该接口**不校验文件类型与大小**，且后台的文章封面、头像等也共用它——若要收紧，改动点在后端 `modules/system/views/other.py` 与 `config/permission.py`；一旦它被登记进权限码映射表，前台也会受影响。
 
 ---
 
@@ -513,10 +545,9 @@ my-blog-client/
 | 10  | `src/ai/plan/self.md`                                              | 空文件                                                                                                                                                                                    |
 | 11  | 文章详情页                                                         | 无「上一篇/下一篇」「相关文章」等能力                                                                                                                                                     |
 | 12  | `uno.config.ts` 的 `app-wrapper` 背景                              | 用 `background-attachment: fixed` 固定渐变，**iOS Safari 支持不佳**（会退化成随页面滚动）；移动端要做到背景固定需改用 `position: fixed` 伪元素承载                                          |
-| 13  | `components/CommentSection`                                        | 只支持**纯文本**评论，不支持表情/图片。后端 `content` 是 `CharField(500)`；改富文本要同步改字段类型、**必须做 XSS 过滤**（否则是存储型 XSS）、图片走 `resource` 模块上传并考虑引用计数、重新定义长度校验语义、兼容历史纯文本数据。详见 `src/ai/plan/comment.md` 遗留项 |
-| 14  | 评论消息提醒                                                       | **未实现**。被回复/被评论时通知对方；后端当前没有通知模型，`my-blog-admin` 的 `MessageBtn` 也只是图标占位（无点击无接口）                                                                  |
-| 15  | 前台注册入口                                                       | **未实现**。前台没有注册页，用户只能由后台添加；因此「登录后才能评论」目前依赖博主先在后台开号。后端 `/user/add` 是管理端接口（需 JWT + 权限码），不能给前台复用                       |
-| 16  | 评论审核                                                           | `Comment.status` 默认 `visible`，即**先发后审**；但两个前端都没有评论管理界面，被置为非 `visible` 的评论目前没有操作入口                                                                  |
+| 13  | 评论消息提醒                                                       | **未实现**。被回复/被评论时通知对方；后端当前没有通知模型，`my-blog-admin` 的 `MessageBtn` 也只是图标占位（无点击无接口）                                                                  |
+| 14  | 前台注册入口                                                       | **未实现**。前台没有注册页，用户只能由后台添加；因此「登录后才能评论」目前依赖博主先在后台开号。后端 `/user/add` 是管理端接口（需 JWT + 权限码），不能给前台复用                       |
+| 15  | 评论审核                                                           | `Comment.status` 默认 `visible`，即**先发后审**；但两个前端都没有评论管理界面，被置为非 `visible` 的评论目前没有操作入口                                                                  |
 
 ---
 
@@ -532,3 +563,4 @@ my-blog-client/
 | 2026-09-14 | **新增评论功能与留言板**。后端：新建 `modules/comment`（`Comment` 单表，靠 `targetType`/`targetId` 区分评论对象、`rootId` 表达两级结构）与 `modules/client/comment_views.py`，新增 3 个接口 `POST /comment/list`（顶层分页 + 内嵌全部回复，固定 4 条 SQL）、`POST /comment/add`、`POST /comment/delete`（顶层删除连带软删回复）；`BloggerProfile` 提供留言板的内容作者。前端：新增通用组件 `src/components/CommentSection`（文章详情页与留言板共用）、`src/pages/Message`、路由 `/message` 与导航项「留言」、`api/comment`、`types/api/comment.d.ts`；`canDelete` 由后端逐条下发，前端不判断身份。**未做前台注册入口**（用户明确本次跳过，用户由后台添加） |
 | 2026-09-14 | 评论功能页面实测问题修复：① 回复补头像（`ReplyItem` 改 flex 行，回复 28px / 顶层 40px 形成层级）；② **修后端真 bug**——「不能回复自己的评论」原本拿**顶层评论作者**与当前用户比对，导致自己的评论一旦被人回复就整个楼层锁死，改为比对**被回复者** `replyUser`；③ 发表按钮遮挡字数计数——去掉 antd `showCount`（绝对定位在右下角必然重叠），改为组件自行在按钮左侧渲染；④ 富文本评论（表情/图片）按用户要求仅记录未实现，已列入「占位与待完成项」第 13 项 |
 | 2026-09-14 | 顶部导航栏背景与页面渐变对齐：`uno.config.ts` 抽出 `pageBackground` 常量供 `app-wrapper` 与新增的 `top-bar-bg` shortcut 共用，使导航栏画出的正是视口顶部那一段渐变，与页面像素级衔接，故不再需要分隔线 |
+| 2026-09-15 | **评论改 markdown 富文本**（完成「占位与待完成项」原第 13 项）。前端新增 `components/MarkdownEditor`（工具栏：加粗/链接/上传图片/表情 + 编辑预览切换，基于 antd `Input.TextArea` 自研，未引入第三方编辑器库）、`components/MarkdownContent`（渲染，`remark-gfm` + `remark-breaks`，**不启用 `rehype-raw`**，故后端无需 XSS 过滤层）、`api/upload`、`utils/upload.ts`（图片校验 + 上传）、`style/comment.css`（复用 `.article-content` 并收紧字号间距，图片改块级独占一行）；`CommentSection` 的输入框与两处正文渲染接入上述组件，`maxLength` 500 → 2000；新增依赖 `remark-breaks`。后端（`my-blog-service`）：`modules/comment/models.py` 的 `Comment.content` 由 `CharField(500)` 改为 `TextField`，`service/comment.py` 的 `MAX_CONTENT_LENGTH` 改为 2000；因 `modules/comment` 无 `migrations/` 目录，**未生成迁移文件**，改为手工执行 `ALTER TABLE blog_comment MODIFY COLUMN comment_content LONGTEXT NOT NULL;`（已执行，重启后端服务后生效）。前台评论配图复用管理端已有的 `POST /sys/file/upload`（需要登录，未新增 `/client/file/upload`） |

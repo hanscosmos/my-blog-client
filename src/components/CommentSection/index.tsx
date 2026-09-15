@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Avatar,
   Button,
-  Input,
   Modal,
   Pagination,
   Skeleton,
@@ -15,11 +14,14 @@ import {
   deleteCommentApi,
   getCommentListApi,
 } from "@/api/comment";
+import MarkdownContent from "@/components/MarkdownContent";
+import MarkdownEditor from "@/components/MarkdownEditor";
 import { useAuth } from "@/store/useAuth";
 import { formatDate } from "@/utils/tool";
 
 const PAGE_SIZE = 10;
-const MAX_CONTENT_LENGTH = 500;
+/** 评论正文是 markdown 源码，长度上限与后端 service/comment.py 保持一致 */
+const MAX_CONTENT_LENGTH = 2000;
 
 interface CommentSectionProps {
   targetType: CommentTargetType;
@@ -63,9 +65,9 @@ function ReplyItem({ reply, isLogin, onReply, onDelete }: ReplyItemProps) {
             {formatDate(reply.createTime, "YYYY-MM-DD HH:mm")}
           </span>
         </div>
-        <p className="text-sm leading-relaxed mt-1 whitespace-pre-wrap break-words">
-          {reply.content}
-        </p>
+        <div className="mt-1 break-words">
+          <MarkdownContent content={reply.content} />
+        </div>
         <div className="flex items-center gap-4 mt-1 text-xs text-muted">
           {isLogin && (
             <span
@@ -117,9 +119,9 @@ function CommentItem({
             {formatDate(comment.createTime, "YYYY-MM-DD HH:mm")}
           </span>
         </div>
-        <p className="text-sm leading-relaxed mt-1 whitespace-pre-wrap break-words">
-          {comment.content}
-        </p>
+        <div className="mt-1 break-words">
+          <MarkdownContent content={comment.content} />
+        </div>
         <div className="flex items-center gap-4 mt-1 text-xs text-muted">
           {isLogin && (
             <span
@@ -198,14 +200,13 @@ function CommentForm({
           </span>
         </div>
       )}
-      <Input.TextArea
+      <MarkdownEditor
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={setContent}
         placeholder={
           replyTarget ? `回复 @${replyTarget.replyUser.nickName}：` : "说点什么吧～"
         }
         maxLength={MAX_CONTENT_LENGTH}
-        autoSize={{ minRows: 3, maxRows: 6 }}
       />
       {/* 字数计数自己渲染在按钮左侧：antd 的 showCount 绝对定位在右下角，会和按钮重叠 */}
       <div className="flex-between mt-3">

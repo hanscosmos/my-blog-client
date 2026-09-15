@@ -94,12 +94,16 @@ const createResponseInterceptor = (instance: AxiosInstance) => {
       isRefreshing = true;
 
       try {
-        const refreshRes: any = await instance.post("/user/refresh", {
-          refreshToken: store.refreshToken,
-        });
+        // 这个响应同样会经过本拦截器，拿到的已经是解包后的业务 data（{ token }），
+        // 而不是 { code, msg, data } 信封，因此不能再按外层结构去判断，否则会误判成刷新失败。
+        const refreshRes = await unwrapResponse<{ token?: string }>(
+          instance.post("/user/refresh", {
+            refreshToken: store.refreshToken,
+          })
+        );
 
-        if (refreshRes.code === 0 && refreshRes.data?.token) {
-          const newToken = refreshRes.data.token;
+        const newToken = refreshRes?.token;
+        if (newToken) {
           // 更新 store 中的 access token
           useAuth.setState({ token: newToken });
           // 通知所有等待中的请求
@@ -109,7 +113,7 @@ const createResponseInterceptor = (instance: AxiosInstance) => {
           originalRequest._isRetry = true;
           return instance(originalRequest);
         } else {
-          // refresh 接口返回非 0 code
+          // refresh 接口没有返回新的 access token
           store.logout();
           sessionStorage.setItem("tokenValid", "true");
           window.location.replace("/login");
