@@ -14,53 +14,58 @@ const Login = React.lazy(() => import("@/pages/Login"));
 const Message = React.lazy(() => import("@/pages/Message"));
 const NotFound = React.lazy(() => import("@/pages/NotFound"));
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <MainLayout />,
+      children: [
+        {
+          index: true,
+          element: <Home />,
+        },
+        {
+          path: "article/:id",
+          element: <Article />,
+        },
+        {
+          path: "about",
+          element: <About />,
+        },
+        {
+          path: "archive",
+          element: <Archive />,
+        },
+        {
+          path: "message",
+          element: <Message />,
+        },
+        {
+          path: "category/:alias",
+          element: <CategoryPage />,
+        },
+        {
+          path: "tag/:alias",
+          element: <TagPage />,
+        },
+      ],
+    },
+    {
+      path: "/login",
+      element: (
+        <PublicRoute>
+          <Login />
+        </PublicRoute>
+      ),
+    },
+    {
+      path: "*",
+      element: <NotFound />,
+    },
+  ],
   {
-    path: "/",
-    element: <MainLayout />,
-    children: [
-      {
-        index: true,
-        element: <Home />,
-      },
-      {
-        path: "article/:id",
-        element: <Article />,
-      },
-      {
-        path: "about",
-        element: <About />,
-      },
-      {
-        path: "archive",
-        element: <Archive />,
-      },
-      {
-        path: "message",
-        element: <Message />,
-      },
-      {
-        path: "category/:alias",
-        element: <CategoryPage />,
-      },
-      {
-        path: "tag/:alias",
-        element: <TagPage />,
-      },
-    ],
+    basename: "/blog",
   },
-  {
-    path: "/login",
-    element: (
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "*",
-    element: <NotFound />,
-  },
-]);
+);
 
 export default router;
